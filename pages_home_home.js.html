@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: pages/home/home.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: pages/home/home.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>import { API_BASE_URL } from "../../constants/constants.js";
+import { loadFromSessionStorage } from "../../utils/utils.js";
+
+document.getElementById("create-journal-btn").addEventListener("click", () => {
+  window.location.href = "../journal/journal.html";
+});
+
+document.getElementById("secrets-btn").addEventListener("click", () => {
+  window.location.href = "../secrets/secrets.html";
+});
+
+document.getElementById("ai-chat-btn").addEventListener("click", () => {
+  if (document.getElementById("right-side-panel").style.display === "block") {
+    document.getElementById("right-side-panel").style.display = "none";
+  } else {
+    document.getElementById("right-side-panel").style.display = "block";
+  }
+});
+
+document
+  .getElementById("search-journals-input")
+  .addEventListener("input", async (event) => {
+    const searchTerm = event.target.value;
+
+    if (searchTerm === "") {
+      const searchedJournalsList = document.querySelector(
+        ".searched-journals__list",
+      );
+      searchedJournalsList.innerHTML = "";
+      return;
+    }
+
+    const queryParams = new URLSearchParams({
+      search_text: searchTerm,
+      auth_token: loadFromSessionStorage("accessToken"),
+    });
+
+    const resultsContainer = document.querySelector(".searched-journals__list");
+
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/search/search_entry?${queryParams.toString()}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error(`Error: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+
+      let matches = data.matches;
+      for (let i = 0; i &lt; matches.length; i++) {
+        let queryParams = new URLSearchParams({
+          entry_id: matches[i].entry_id,
+          auth_token: loadFromSessionStorage("accessToken"),
+        });
+        let response = await fetch(
+          `${API_BASE_URL}/read2/read_entries?${queryParams.toString()}`,
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          },
+        );
+
+        let data = await response.json();
+        matches[i].entry_text = data.entry_text;
+
+        queryParams = new URLSearchParams({
+          journal_id: matches[i].journal_id,
+          auth_token: loadFromSessionStorage("accessToken"),
+        });
+        response = await fetch(
+          `${API_BASE_URL}/read2/read_journal?${queryParams.toString()}`,
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          },
+        );
+        data = await response.json();
+
+        matches[i].journal_title = data["entries"][0].journal_title;
+      }
+
+      resultsContainer.innerHTML = "";
+
+      matches.forEach((item) => {
+        const card = document.createElement("div");
+        card.classList.add("card", "horizontal-row-card");
+
+        card.innerHTML = `
+					&lt;a href="../journal/journal.html?journalId=${item.journal_id}" class="search_card__link">
+						&lt;div class="search_card__content">
+						&lt;h3 class="search_card__title">${item.journal_title}&lt;/h3>
+						&lt;p class="search_card__description">${item.entry_text.substring(item.char_index, item.char_index + 15)}&lt;/p>
+						&lt;/div>
+					&lt;/a>
+					`;
+
+        resultsContainer.appendChild(card);
+      });
+      // eslint-disable-next-line no-unused-vars
+    } catch (error) {
+      resultsContainer.innerHTML = `&lt;h4 id="no-search-results">No matching search results.&lt;/h4>`;
+    }
+  });
+
+document.addEventListener("DOMContentLoaded", async () => {
+  let matches = [];
+
+  const queryParams = new URLSearchParams({
+    search_text: "",
+    auth_token: loadFromSessionStorage("accessToken"),
+  });
+
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/search/search_entry?${queryParams.toString()}`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      },
+    );
+
+    if (!response.ok) {
+      throw new Error(`Error: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+
+    matches = data.matches;
+    for (let i = 0; i &lt; matches.length; i++) {
+      let queryParams = new URLSearchParams({
+        entry_id: matches[i].entry_id,
+        auth_token: loadFromSessionStorage("accessToken"),
+      });
+      let response = await fetch(
+        `${API_BASE_URL}/read2/read_entries?${queryParams.toString()}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        },
+      );
+
+      let data = await response.json();
+      matches[i].entry_text = data.entry_text;
+
+      queryParams = new URLSearchParams({
+        journal_id: matches[i].journal_id,
+        auth_token: loadFromSessionStorage("accessToken"),
+      });
+      response = await fetch(
+        `${API_BASE_URL}/read2/read_journal?${queryParams.toString()}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        },
+      );
+      data = await response.json();
+
+      matches[i].journal_title = data["entries"][0].journal_title;
+    }
+
+    const journalsContainer = document.querySelector(".journals-container");
+
+    journalsContainer.innerHTML = "";
+
+    matches.forEach((item) => {
+      const card = document.createElement("div");
+      card.classList.add("card", "horizontal-row-card");
+
+      card.innerHTML = `
+          &lt;a href="../journal/journal.html?journalId=${item.journal_id}" class="card__link">
+            &lt;div class="search_card__content">
+              &lt;h3 class="search_card__title">${item.journal_title}&lt;/h3>    
+						  &lt;p class="search_card__description">${item.entry_text.substring(item.char_index, item.char_index + item.journal_title.length - 3)}...&lt;/p>
+            &lt;/div>
+          &lt;/a>
+        `;
+
+      journalsContainer.appendChild(card);
+    });
+    // eslint-disable-next-line no-unused-vars
+  } catch (error) {
+    const journalsContainer = document.querySelector(".journals-container");
+    journalsContainer.innerHTML = `&lt;h4 id="no-journal-results">No journals found.&lt;/h4>`;
+  }
+
+  addMessage(
+    "Hi, I'm the AI version of Prof. Powell! I'm trained on Prof. Powell's lecture notes. You can ask me anything, but if it is of importance do ask Prof. Powell directly.",
+    "bot",
+  );
+});
+
+const chatBody = document.getElementById("chatBody");
+const chatInput = document.getElementById("chatInput");
+const sendButton = document.getElementById("sendButton");
+
+/**
+ * Add message to chat body
+ *
+ * @param {string} message - message to be added
+ * @param {string} sender - user or bot
+ */
+function addMessage(message, sender = "user") {
+  const messageElement = document.createElement("div");
+  messageElement.classList.add("chat-message", sender);
+
+  if (sender === "bot") {
+    const imgElement = document.createElement("img");
+    imgElement.classList.add("profile-pic");
+    imgElement.src = "../../assets/prof.jpeg";
+    imgElement.alt = "AI Prof. Powell";
+
+    const messageContent = document.createElement("div");
+    messageContent.classList.add("message-content");
+    messageContent.textContent = message;
+
+    messageElement.appendChild(imgElement);
+    messageElement.appendChild(messageContent);
+  } else {
+    const imgElement = document.createElement("img");
+    imgElement.classList.add("profile-pic");
+    imgElement.src = "../../assets/user.jpg";
+    imgElement.alt = "User";
+
+    const messageContent = document.createElement("div");
+    messageContent.classList.add("message-content");
+    messageContent.textContent = message;
+
+    messageElement.appendChild(imgElement);
+    messageElement.appendChild(messageContent);
+  }
+
+  chatBody.appendChild(messageElement);
+  chatBody.scrollTop = chatBody.scrollHeight;
+}
+
+/**
+ * Get bot response
+ *
+ * @param {string} message - user message
+ * @returns {object} - bot response
+ */
+async function getBotResponse(message) {
+  let queryParams = new URLSearchParams({
+    user_message: message,
+  });
+
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/ai_prof/get_prof_response?${queryParams.toString()}`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      },
+    );
+
+    if (!response.ok) {
+      throw new Error(`Error: ${response.statusText}`);
+    }
+
+    let data = await response.json();
+
+    return data;
+  } catch (error) {
+    window.alert("Failed to get bot response.", error);
+  }
+}
+
+/**
+ * Create heading badges
+ *
+ * @param {array} headings - array of headings from bot response
+ * @param {array} urls - array of urls from bot response
+ * @returns {HTMLElement} - badge container
+ */
+function createHeadingBadges(headings, urls) {
+  const badgeContainer = document.createElement("div");
+  badgeContainer.classList.add("badge-container");
+
+  headings.forEach((heading, index) => {
+    const badge = document.createElement("a");
+    badge.classList.add("badge");
+    badge.href = urls[index];
+    badge.target = "_blank";
+    badge.textContent = heading;
+
+    badgeContainer.appendChild(badge);
+  });
+
+  return badgeContainer;
+}
+
+sendButton.addEventListener("click", async () => {
+  const message = chatInput.value.trim();
+
+  if (message) {
+    addMessage(message);
+    chatInput.value = "";
+
+    let data = await getBotResponse(message);
+
+    const replyMessage = data.message;
+    const headings = data.headings || [];
+    const urls = data.urls || [];
+
+    addMessage(replyMessage, "bot");
+
+    if (headings.length > 0 &amp;&amp; urls.length > 0) {
+      const badgeContainer = createHeadingBadges(headings, urls);
+      chatBody.appendChild(badgeContainer);
+      chatBody.scrollTop = chatBody.scrollHeight;
+    }
+  }
+});
+
+chatInput.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    sendButton.click();
+  }
+});
+
+const clearButton = document.getElementById("clearButton");
+
+clearButton.addEventListener("click", () => {
+  chatBody.innerHTML = "";
+  addMessage(
+    "Hi, I'm the AI version of Prof. Powell! I'm trained on Prof. Powell's lecture notes. You can ask me anything, but if it is of importance do ask Prof. Powell directly.",
+    "bot",
+  );
+});
+
+document.getElementById("close-button").addEventListener("click", () => {
+  document.getElementById("ai-chat-btn").click();
+});
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#addMessage">addMessage</a></li><li><a href="global.html#createHeadingBadges">createHeadingBadges</a></li><li><a href="global.html#createJournal">createJournal</a></li><li><a href="global.html#decryptText">decryptText</a></li><li><a href="global.html#deleteFromSessionStorage">deleteFromSessionStorage</a></li><li><a href="global.html#deleteJournal">deleteJournal</a></li><li><a href="global.html#deleteSecretFromLocalStorage">deleteSecretFromLocalStorage</a></li><li><a href="global.html#encryptText">encryptText</a></li><li><a href="global.html#fetchCode">fetchCode</a></li><li><a href="global.html#fetchJournal">fetchJournal</a></li><li><a href="global.html#getBotResponse">getBotResponse</a></li><li><a href="global.html#getCurrentSentence">getCurrentSentence</a></li><li><a href="global.html#getFromSessionStorage">getFromSessionStorage</a></li><li><a href="global.html#loadFromSessionStorage">loadFromSessionStorage</a></li><li><a href="global.html#loadSecretsFromLocalStorage">loadSecretsFromLocalStorage</a></li><li><a href="global.html#saveJournal">saveJournal</a></li><li><a href="global.html#saveSecretToLocalStorage">saveSecretToLocalStorage</a></li><li><a href="global.html#saveToSessionStorage">saveToSessionStorage</a></li><li><a href="global.html#searchGoogle">searchGoogle</a></li><li><a href="global.html#setEncryptionKey">setEncryptionKey</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.4</a> on Fri Dec 13 2024 18:23:01 GMT+0000 (Coordinated Universal Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>
